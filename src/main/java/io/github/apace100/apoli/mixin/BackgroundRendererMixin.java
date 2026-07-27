@@ -14,6 +14,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.material.FogType;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
@@ -23,12 +25,12 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @OnlyIn(Dist.CLIENT)
 public abstract class BackgroundRendererMixin {
 
-	@Redirect(at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;hasEffect(Lnet/minecraft/world/effect/MobEffect;)Z", ordinal = 0), method = "setupColor")
-	private static boolean hasStatusEffectProxy(LivingEntity player, MobEffect effect) {
+	@WrapOperation(at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;hasEffect(Lnet/minecraft/world/effect/MobEffect;)Z", ordinal = 0), method = "setupColor")
+	private static boolean hasStatusEffectProxy(LivingEntity player, MobEffect effect, Operation<Boolean> original) {
 		if (player instanceof Player && effect == MobEffects.NIGHT_VISION && !player.hasEffect(MobEffects.NIGHT_VISION)) {
 			return INightVisionPower.getNightVisionStrength(player).isPresent();
 		}
-		return player.hasEffect(effect);
+		return original.call(player, effect);
 	}
 
 	@ModifyVariable(method = "setupColor", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;getEntity()Lnet/minecraft/world/entity/Entity;", ordinal = 0), ordinal = 0)
