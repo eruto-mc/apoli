@@ -11,7 +11,8 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Redirect;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 
 import java.util.Optional;
 
@@ -25,11 +26,11 @@ public class ChangeGlowColorMixin {
 
 	//I Still can't get @ModifyArgs to not crash my game.
 	//This causes a crash with citadel
-	@Redirect(method = "renderLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;getTeamColor()I"))
-	private int setColors(Entity instance) {
+	@WrapOperation(method = "renderLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;getTeamColor()I"))
+	private int setColors(Entity instance, Operation<Integer> original) {
 		if (this.minecraft.getCameraEntity() == null)
-			return instance.getTeamColor();
+			return original.call(instance);
 		Optional<ColorConfiguration> glowColor = EntityGlowPower.getGlowColor(this.minecraft.getCameraEntity(), instance);
-		return glowColor.map(ColorConfiguration::asRGB).orElseGet(instance::getTeamColor);
+		return glowColor.map(ColorConfiguration::asRGB).orElseGet(() -> original.call(instance));
 	}
 }

@@ -31,6 +31,8 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -114,17 +116,17 @@ public abstract class GameRendererMixin {
 		}
 	}
 
-	@Redirect(method = "getNightVisionScale", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/effect/MobEffectInstance;endsWithin(I)Z"))
-	private static boolean fixNightVision(MobEffectInstance instance, int pDuration) {
+	@WrapOperation(method = "getNightVisionScale", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/effect/MobEffectInstance;endsWithin(I)Z"))
+	private static boolean fixNightVision(MobEffectInstance instance, int pDuration, Operation<Boolean> original) {
 		if (instance != null)
-			return instance.endsWithin(pDuration);
+			return original.call(instance, pDuration);
 		return false;
 	}
 
-    @Redirect(method = "getNightVisionScale", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/effect/MobEffectInstance;getDuration()I"))
-    private static int extraFixNightVision(MobEffectInstance instance) {
+    @WrapOperation(method = "getNightVisionScale", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/effect/MobEffectInstance;getDuration()I"))
+    private static int extraFixNightVision(MobEffectInstance instance, Operation<Integer> original) {
         if (instance != null)
-            return instance.getDuration();
+            return original.call(instance);
         return 0;
     }
 
@@ -134,9 +136,9 @@ public abstract class GameRendererMixin {
 			INightVisionPower.getNightVisionStrength(living).ifPresent(cir::setReturnValue);
 	}
 
-	@Redirect(method = "getFov", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;getFluidInCamera()Lnet/minecraft/world/level/material/FogType;"))
-	private FogType modifySubmersionType(Camera camera) {
-		FogType original = camera.getFluidInCamera();
+	@WrapOperation(method = "getFov", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;getFluidInCamera()Lnet/minecraft/world/level/material/FogType;"))
+	private FogType modifySubmersionType(Camera camera, Operation<FogType> operation) {
+		FogType original = operation.call(camera);
 		return ModifyCameraSubmersionTypePower.tryReplace(camera.getEntity(), original).orElse(original);
 	}
 
@@ -181,12 +183,12 @@ public abstract class GameRendererMixin {
 	}
 
 	// PHASING
-	@Redirect(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;setup(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/world/entity/Entity;ZZF)V"), method = "renderLevel")
-	private void preventThirdPerson(Camera camera, BlockGetter area, Entity focusedEntity, boolean thirdPerson, boolean inverseView, float tickDelta) {
+	@WrapOperation(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;setup(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/world/entity/Entity;ZZF)V"), method = "renderLevel")
+	private void preventThirdPerson(Camera camera, BlockGetter area, Entity focusedEntity, boolean thirdPerson, boolean inverseView, float tickDelta, Operation<Void> original) {
 		if (ApoliPowers.PHASING.isPresent() && PhasingPower.hasRenderMethod(camera.getEntity(), PhasingConfiguration.RenderType.REMOVE_BLOCKS))
-			camera.setup(area, focusedEntity, false, false, tickDelta);
+			original.call(camera, area, focusedEntity, false, false, tickDelta);
 		else
-			camera.setup(area, focusedEntity, thirdPerson, inverseView, tickDelta);
+			original.call(camera, area, focusedEntity, thirdPerson, inverseView, tickDelta);
 	}
 
 	private Set<BlockPos> getEyePos(float rangeX, float rangeY, float rangeZ) {
