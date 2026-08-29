@@ -27,6 +27,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Optional;
 
+/**
+ * eruto patch: apoli の {@code @Redirect} を MixinExtras の {@code @WrapOperation} へ置き換え、
+ * 同じ描画の呼び出しに手を入れる他MOD（softimprints ほか）と同居できるようにした。
+ *
+ * <p>{@code @Redirect} は1つの呼び出しに1つしか当たらないので、同じ場所を狙う別のMODが
+ * あると <b>どちらかの適用が失敗して落ちる</b>。{@code @WrapOperation} は重ねられる。
+ *
+ * <p>ロジックは元のまま——元の操作は {@code original.call(...)} を通して呼んでいる。
+ * 上流の apoli #137 が求めている対応と同じもの。
+ */
 @Mixin(LivingEntityRenderer.class)
 public abstract class LivingEntityRendererMixin extends EntityRenderer<LivingEntity> {
 
