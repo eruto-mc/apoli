@@ -62,13 +62,35 @@ public abstract class ItemStackMixin extends net.minecraftforge.common.capabilit
     }
 
     // This is probably the wrong way to do this but I really didn't want to set up NBT for the capability. Oh well.
+    //
+    // ⚠ eruto: ask the SOURCE stack first, not the copy (2026-09-06).
+    //
+    // Forge gathers an ItemStack's capabilities lazily: CapabilityProvider.getCapabilities() runs
+    // doGatherCapabilities() -- which posts AttachCapabilitiesEvent to the whole bus -- the first
+    // time getCapability() is called, then sets `initialized` so it never runs again for that
+    // object. (Read out of forge-1.20.1-47.4.22-universal.jar with javap.)
+    //
+    // copy() returns a brand new ItemStack, so asking the COPY first guaranteed one full
+    // AttachCapabilitiesEvent post per copy, forever. Asking the SOURCE first costs that once per
+    // stack object and nothing afterwards, because a stack sitting in an inventory is the same
+    // object every tick. When the source has no linked entity we return without ever touching the
+    // copy, so no gather happens on it at all.
+    //
+    // Measured on the club's rental server (spark, 2026-09-06, two players, 1 tick = 81.77 ms):
+    // Tom's Simple Storage rebuilds its terminal list every tick while a player has the screen
+    // open, one ItemStack.copy() per slot. That path cost 13.13 ms/tick, of which 9.88 ms/tick was
+    // this handler's gather -> ForgeEventFactory.gatherCapabilities -> EventBus.post.
+    //
+    // Behaviour is unchanged: a stack with no ENTITY_LINKED_ITEM_STACK value, or one whose value
+    // has a null entity, had nothing to copy across in the first place.
     @Inject(method = "copy", at = @At(value = "RETURN"))
     private void copyNewParams(CallbackInfoReturnable<ItemStack> cir) {
+        Optional<EntityLinkedItemStack> otherEli = this.getCapability(ApoliCapabilities.ENTITY_LINKED_ITEM_STACK).resolve();
+        if (otherEli.isEmpty() || otherEli.get().getEntity() == null) {
+            return;
+        }
         cir.getReturnValue().getCapability(ApoliCapabilities.ENTITY_LINKED_ITEM_STACK).ifPresent(eli -> {
-            Optional<EntityLinkedItemStack> otherEli = this.getCapability(ApoliCapabilities.ENTITY_LINKED_ITEM_STACK).resolve();
-            if (otherEli.isPresent() && otherEli.get().getEntity() != null) {
-                eli.setEntity(otherEli.get().getEntity());
-            }
+            eli.setEntity(otherEli.get().getEntity());
         });
     }
 
