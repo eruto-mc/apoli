@@ -35,7 +35,7 @@ import java.util.Optional;
  * あると <b>どちらかの適用が失敗して落ちる</b>。{@code @WrapOperation} は重ねられる。
  *
  * <p>ロジックは元のまま——元の操作は {@code original.call(...)} を通して呼んでいる。
- * 上流の apoli #137 が求めている対応と同じもの。
+ * 作者の置き場の apoli #137 が求めている対応と同じもの。
  */
 @Mixin(LivingEntityRenderer.class)
 public abstract class LivingEntityRendererMixin extends EntityRenderer<LivingEntity> {
